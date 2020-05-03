@@ -18,3 +18,7 @@ install-tools:
 .PHONY: lint
 lint:
 	@${GOBIN}/golangci-lint run ./...
+
+.PHONY: test
+test:
+	@${GO} test ./...
