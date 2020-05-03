@@ -3,6 +3,11 @@ GO := go
 GOBIN:=${PWD}/bin
 PATH:=${GOBIN}:${PATH}
 
+.PHONY: dependencies
+dependencies:
+	go mod download
+	go mod tidy
+
 .PHONY: run
 run:
 	@${GO} run cmd/recmd/main.go
