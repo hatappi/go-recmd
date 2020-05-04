@@ -1,3 +1,4 @@
+// Package watcher watch change event
 package watcher
 
 import (
@@ -15,6 +16,7 @@ import (
 	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
 )
 
+// Watcher represent watcher interface
 type Watcher interface {
 	Run(ctx context.Context) error
 }
@@ -24,6 +26,7 @@ type watcher struct {
 	eventChan chan *e.Event
 }
 
+// NewWatcher initilize watcher
 func NewWatcher(path string, eventChan chan *e.Event) Watcher {
 	return &watcher{
 		path:      filepath.Clean(path),
@@ -34,9 +37,7 @@ func NewWatcher(path string, eventChan chan *e.Event) Watcher {
 func (w *watcher) Run(ctx context.Context) error {
 	logger := zapLogger.FromContext(ctx)
 
-	rootPath := strings.Split(w.path, "/")[0]
-
-	watchDir, err := w.getWatchDirs(rootPath)
+	watchDir, err := w.getWatchDirs()
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,9 @@ func (w *watcher) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer watcher.Close()
+	defer func() {
+		_ = watcher.Close()
+	}()
 
 	_, filename := filepath.Split(w.path)
 	rep, err := regexp.Compile(`\*+`)
@@ -68,10 +71,10 @@ func (w *watcher) Run(ctx context.Context) error {
 				}
 
 				if event.Op != fsnotify.Remove {
-					fileInfo, err := os.Stat(event.Name)
-					if err != nil {
+					fileInfo, osErr := os.Stat(event.Name)
+					if osErr != nil {
 						// If temporary file is checked, it may not be visible.
-						if _, ok := err.(*os.PathError); ok {
+						if _, ok := osErr.(*os.PathError); ok {
 							continue
 						}
 						return err
@@ -79,15 +82,14 @@ func (w *watcher) Run(ctx context.Context) error {
 
 					if fileInfo.IsDir() {
 						go func(newDir string) {
-							isWatchDir, err := w.isWatchDir(newDir)
-							if err != nil {
+							var isWatchDir bool
+							if isWatchDir, err = w.isWatchDir(newDir); err != nil {
 								logger.Error("directory watch is failed", zap.String("path", newDir), zap.Error(err))
 								return
 							}
 							if isWatchDir {
 								logger.Debug("watch add new directory", zap.String("path", newDir))
-								err := watcher.Add(newDir)
-								if err != nil {
+								if err = watcher.Add(newDir); err != nil {
 									logger.Error("directory add is failed", zap.String("path", newDir), zap.Error(err))
 									return
 								}
@@ -102,11 +104,11 @@ func (w *watcher) Run(ctx context.Context) error {
 						Path: event.Name,
 					}
 				}
-			case err, ok := <-watcher.Errors:
+			case watchErr, ok := <-watcher.Errors:
 				if !ok {
 					continue
 				}
-				logger.Error("watch is failed", zap.Error(err))
+				logger.Error("watch is failed", zap.Error(watchErr))
 			}
 		}
 	})
@@ -126,9 +128,10 @@ func (w *watcher) Run(ctx context.Context) error {
 	return nil
 }
 
-func (w *watcher) getWatchDirs(rootPath string) ([]string, error) {
+func (w *watcher) getWatchDirs() ([]string, error) {
 	watchDirs := []string{}
 
+	rootPath := strings.Split(w.path, "/")[0]
 	if strings.Contains(rootPath, "*") {
 		rootPath = "."
 	}
@@ -170,24 +173,20 @@ func (w *watcher) isWatchDir(targetDir string) (bool, error) {
 	splitDir := strings.Split(dir, "/")
 	patterns := []string{}
 
-	for i, d := range splitDir {
+	for _, d := range splitDir {
 		if d == "**" {
 			patterns = append(patterns, "([^/]*/)*")
 			continue
 		}
 
 		if strings.Contains(d, "*") {
-			d = strings.Replace(d, "*", "([^/]*/)?", -1)
-		} else {
-			if len(splitDir)-1 == i {
-				d = d + "/"
-			}
+			d = strings.Replace(d, "*", "([^/]*)?", -1)
 		}
 
-		patterns = append(patterns, d)
+		patterns = append(patterns, d+"/")
 	}
 
-	pattern := strings.Join(patterns, "/")
+	pattern := strings.Join(patterns, "")
 	pattern = "^" + pattern + "$"
 	r, err := regexp.Compile(pattern)
 	if err != nil {
@@ -195,6 +194,6 @@ func (w *watcher) isWatchDir(targetDir string) (bool, error) {
 	}
 
 	targetDir = strings.TrimRight(targetDir, "/")
-	targetDir = targetDir + "/"
+	targetDir += "/"
 	return r.MatchString(targetDir), nil
 }
