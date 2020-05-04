@@ -3,9 +3,11 @@ module github.com/hatappi/go-recmd
 go 1.13
 
 require (
+	github.com/fsnotify/fsnotify v1.4.7
 	github.com/golangci/golangci-lint v1.26.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.6.1
 	go.uber.org/zap v1.10.0
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 )

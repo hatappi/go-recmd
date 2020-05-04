@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/hatappi/go-recmd/internal/event"
 	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
+	"github.com/hatappi/go-recmd/internal/watcher"
 )
 
 var watchCmdExample = `
@@ -39,6 +44,34 @@ func newWatchCmd() *cobra.Command {
 				zap.Any("exclude", opts.excludes),
 				zap.Any("commands", args),
 			)
+
+			ctx, cancel := context.WithCancel(ctx)
+
+			eventChan := make(chan *event.Event)
+
+			w := watcher.NewWatcher(opts.path, eventChan)
+
+			eg := errgroup.Group{}
+			eg.Go(func() error {
+				defer cancel()
+				return w.Run(ctx)
+			})
+
+			eg.Go(func() error {
+				defer cancel()
+				for {
+					select {
+					case e := <-eventChan:
+						logger.Info("receive event", zap.Any("event", e))
+					case <-ctx.Done():
+						return nil
+					}
+				}
+			})
+
+			if err := eg.Wait(); err != nil {
+				return err
+			}
 			return nil
 		},
 	}
