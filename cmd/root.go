@@ -1,0 +1,37 @@
+// Package cmd is recmd command
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
+	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
+)
+
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "recmd",
+	Short: "recmd is live reloading tools for any application",
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	ctx := context.Background()
+
+	logger, err := zapLogger.NewZap(zapcore.DebugLevel)
+	if err != nil {
+		fmt.Printf("logger initialize error: %v", err)
+		os.Exit(1)
+	}
+	ctx = zapLogger.WithContext(ctx, logger)
+
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
+		logger.Error("recmd execute failed", zap.Error(err))
+	}
+}

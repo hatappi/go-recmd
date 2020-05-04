@@ -1,4 +1,5 @@
 GO := go
+ARG = ""
 
 GOBIN:=${PWD}/bin
 PATH:=${GOBIN}:${PATH}
@@ -10,11 +11,11 @@ dependencies:
 
 .PHONY: run
 run:
-	@${GO} run cmd/recmd/main.go
+	@${GO} run main.go ${ARG}
 
 .PHONY: build
 build:
-	@${GO} build -o dist/recmd cmd/recmd/main.go
+	@${GO} build -o dist/recmd main.go
 
 .PHONY: install-tools
 install-tools:
