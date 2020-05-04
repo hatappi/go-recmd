@@ -35,3 +35,7 @@ func Execute() {
 		logger.Error("recmd execute failed", zap.Error(err))
 	}
 }
+
+func init() {
+	rootCmd.AddCommand(newWatchCmd())
+}

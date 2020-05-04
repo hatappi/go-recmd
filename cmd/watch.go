@@ -7,41 +7,45 @@ import (
 	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
 )
 
-// watchCmd represents the watch command
-var watchCmd = &cobra.Command{
-	Use:     "watch [flags] [your command]",
-	Short:   "watch path and execute command",
-	Aliases: []string{"w"},
-	Args:    cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-		logger := zapLogger.FromContext(ctx)
+var watchCmdExample = `
+$ recmd watch go run main.go
+$ recmd watch -p "./main.go" go run main.go
+$ recmd watch --exclude testA --exclude testB go run main.go
+`
 
-		path, err := cmd.Flags().GetString("path")
-		if err != nil {
-			return err
-		}
-
-		excludes, err := cmd.Flags().GetStringSlice("exclude")
-		if err != nil {
-			return err
-		}
-
-		logger.Error(
-			"watch command options",
-			zap.String("path", path),
-			zap.Any("exclude", excludes),
-			zap.Any("commands", args),
-		)
-		return nil
-	},
+type watchOption struct {
+	path     string
+	excludes []string
 }
 
-func init() {
-	rootCmd.AddCommand(watchCmd)
+func newWatchCmd() *cobra.Command {
+	opts := &watchOption{
+		path: "**/*",
+	}
 
-	watchCmd.Flags().StringP("path", "p", "**/*", "watch path")
-	watchCmd.Flags().StringSlice("exclude", []string{}, "exclude path. you can specify multiple")
+	cmd := &cobra.Command{
+		Use:     "watch [flags] [your command]",
+		Short:   "watch path and execute command",
+		Aliases: []string{"w"},
+		Example: watchCmdExample,
+		Args:    cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			logger := zapLogger.FromContext(ctx)
 
-	watchCmd.Flags().SetInterspersed(false)
+			logger.Debug(
+				"watch command options",
+				zap.String("path", opts.path),
+				zap.Any("exclude", opts.excludes),
+				zap.Any("commands", args),
+			)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&opts.path, "path", "p", opts.path, "watch path")
+	cmd.Flags().StringSliceVarP(&opts.excludes, "exclude", "e", opts.excludes, "exclude path. you can specify multiple")
+	cmd.Flags().SetInterspersed(false)
+
+	return cmd
 }
