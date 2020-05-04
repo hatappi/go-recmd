@@ -1,4 +1,5 @@
 GO := go
+ARG = ""
 
 GOBIN:=${PWD}/bin
 PATH:=${GOBIN}:${PATH}
@@ -10,7 +11,7 @@ dependencies:
 
 .PHONY: run
 run:
-	@${GO} run main.go
+	@${GO} run main.go ${ARG}
 
 .PHONY: build
 build:

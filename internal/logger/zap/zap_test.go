@@ -1,4 +1,4 @@
-package logger
+package zap
 
 import (
 	"context"
@@ -14,7 +14,7 @@ func TestWithZapContext(t *testing.T) {
 		t.Fatalf("zapKey isn't empty. %+v", log)
 	}
 
-	ctx = WithZapContext(ctx, zap.NewNop())
+	ctx = WithContext(ctx, zap.NewNop())
 
 	logger := ctx.Value(zapKey)
 	if logger == nil {
@@ -29,13 +29,13 @@ func TestWithZapContext(t *testing.T) {
 func TestZapFromContext(t *testing.T) {
 	ctx := context.Background()
 
-	if log := ZapFromContext(ctx); log != nil {
+	if log := FromContext(ctx); log != nil {
 		t.Fatalf("zapKey isn't empty. %+v", log)
 	}
 
 	ctx = context.WithValue(ctx, zapKey, zap.NewNop())
 
-	logger := ZapFromContext(ctx)
+	logger := FromContext(ctx)
 	if logger == nil {
 		t.Fatalf("zapKey doesn't include anything")
 	}
