@@ -42,19 +42,19 @@ func newWatchCmd() *cobra.Command {
 			logger := zapLogger.FromContext(ctx)
 
 			logger.Debug(
-				"watch command options",
+				"command options",
 				zap.String("path", opts.path),
-				zap.Any("exclude", opts.excludes),
-				zap.Any("commands", args),
+				zap.Strings("exclude", opts.excludes),
+				zap.Strings("commands", args),
 			)
 
 			ctx, cancel := context.WithCancel(ctx)
 
 			eventChan := make(chan *event.Event)
 
-			w := watcher.NewWatcher(opts.path, opts.excludes, eventChan, logger)
-
 			eg := errgroup.Group{}
+
+			w := watcher.NewWatcher(opts.path, opts.excludes, eventChan, logger)
 			eg.Go(func() error {
 				defer cancel()
 				return w.Run(ctx)
@@ -82,7 +82,7 @@ func newWatchCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.path, "path", "p", opts.path, "watch path")
-	cmd.Flags().StringSliceVarP(&opts.excludes, "exclude", "e", opts.excludes, "exclude path. you can specify multiple")
+	cmd.Flags().StringSliceVarP(&opts.excludes, "exclude", "e", opts.excludes, "exclude path. you can specify multiple it")
 	cmd.Flags().SetInterspersed(false)
 
 	return cmd

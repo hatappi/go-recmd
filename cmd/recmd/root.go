@@ -14,17 +14,21 @@ import (
 
 var (
 	verbose  bool
-	logLevel = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+	logLevel = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:          "recmd",
-	Short:        "recmd is live reloading tools for any application",
+	Short:        "recmd is live reloading tool for any application",
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+		logger := zapLogger.FromContext(ctx)
+
 		if verbose {
 			logLevel.SetLevel(zapcore.DebugLevel)
+			logger.Debug("enable verbose mode")
 		}
 
 		return nil

@@ -54,7 +54,7 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 	for {
 		select {
 		case evt := <-e.eventChan:
-			e.logger.Debug("receive event", zap.Any("event", evt))
+			e.logger.Debug("receive event", zap.Reflect("event", evt))
 
 			d := evt.CreatedAt.Sub(lastExecutedAt)
 			// If it runs continuously for a short period of time, it will get an killed error.
@@ -66,6 +66,7 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 
 			lastExecutedAt = evt.CreatedAt
 			go func() {
+				e.logger.Info("re-execute the command")
 				execCtx, cancel = context.WithCancel(ctx)
 				err := e.runCommand(execCtx, commands)
 				if err != nil {
