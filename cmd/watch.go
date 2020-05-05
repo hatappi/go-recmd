@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"os"
+	"os/signal"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -64,10 +66,19 @@ func newWatchCmd() *cobra.Command {
 					case e := <-eventChan:
 						logger.Info("receive event", zap.Any("event", e))
 					case <-ctx.Done():
+						logger.Debug("finish receive event")
 						return nil
 					}
 				}
 			})
+
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func() {
+				for range c {
+					cancel()
+				}
+			}()
 
 			if err := eg.Wait(); err != nil {
 				return err
