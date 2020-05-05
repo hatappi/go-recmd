@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -8,47 +9,45 @@ import (
 )
 
 func TestIsWatchDir(t *testing.T) {
+	os.MkdirAll("tmp/test/a/b/c/d", 0755)
+	defer os.RemoveAll("tmp")
+
 	testCases := []struct {
-		name      string
 		path      string
 		targetDir string
 		expect    bool
 		wantErr   bool
 	}{
 		{
-			name:      "path is **/*, targetDir is test/test/example",
 			path:      "**/*",
-			targetDir: "test/test/example",
+			targetDir: "tmp/test/a",
 			expect:    true,
 			wantErr:   false,
 		},
 		{
-			name:      "path is test/*, targetDir is test",
-			path:      "test/*",
-			targetDir: "test2/test",
-			expect:    false,
-			wantErr:   false,
-		},
-		{
-			name:      "path is test/*/*/test, targetDir is test/a/b",
-			path:      "test/*/*/test",
-			targetDir: "test/a/b",
+			path:      "tmp/test/*",
+			targetDir: "tmp/test",
 			expect:    true,
 			wantErr:   false,
 		},
 		{
-			name:      "path is test/**/example/test, targetDir is test/a/b/example",
-			path:      "test/**/example/test",
-			targetDir: "test/a/b/example",
+			path:      "tmp/**/c/d/",
+			targetDir: "tmp/test/a/b/c/d",
+			expect:    true,
+			wantErr:   false,
+		},
+		{
+			path:      "tmp", // syntax sugar
+			targetDir: "tmp/test/a",
 			expect:    true,
 			wantErr:   false,
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(tt *testing.T) {
+		t.Run(fmt.Sprintf("path is %s, targetDir is %s", tc.path, tc.targetDir), func(tt *testing.T) {
 			w := &watcher{
-				path: tc.path,
+				path: normalizePath(tc.path),
 			}
 
 			actual, err := w.isWatchDir(tc.targetDir)
@@ -66,7 +65,7 @@ func TestIsWatchDir(t *testing.T) {
 
 func TestGetWatchDirs(t *testing.T) {
 	os.MkdirAll("tmp/test/a/b/c/d", 0755)
-	defer os.Remove("tmp")
+	defer os.RemoveAll("tmp")
 
 	testCases := []struct {
 		path    string
@@ -85,16 +84,28 @@ func TestGetWatchDirs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			path: "tmp/test/a/b",
+			path: "tmp", // syntax sugar
 			expect: []string{
+				"tmp",
+				"tmp/test",
 				"tmp/test/a",
+				"tmp/test/a/b",
+				"tmp/test/a/b/c",
+				"tmp/test/a/b/c/d",
 			},
 			wantErr: false,
 		},
 		{
-			path: "tmp/test/*/*/c/d",
+			path: "tmp/test/a/b",
 			expect: []string{
-				"tmp/test/a/b/c",
+				"tmp/test/a/b",
+			},
+			wantErr: false,
+		},
+		{
+			path: "tmp/test/*/*/c/d/",
+			expect: []string{
+				"tmp/test/a/b/c/d",
 			},
 			wantErr: false,
 		},
