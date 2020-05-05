@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/hatappi/go-recmd/internal/event"
+	"github.com/hatappi/go-recmd/internal/executor"
 	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
 	"github.com/hatappi/go-recmd/internal/watcher"
 )
@@ -59,17 +60,10 @@ func newWatchCmd() *cobra.Command {
 				return w.Run(ctx)
 			})
 
+			executor := executor.NewExecutor(logger, eventChan)
 			eg.Go(func() error {
 				defer cancel()
-				for {
-					select {
-					case e := <-eventChan:
-						logger.Info("receive event", zap.Any("event", e))
-					case <-ctx.Done():
-						logger.Debug("finish receive event")
-						return nil
-					}
-				}
+				return executor.Run(ctx, args)
 			})
 
 			c := make(chan os.Signal, 1)
