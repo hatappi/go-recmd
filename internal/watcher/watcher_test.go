@@ -46,8 +46,9 @@ func TestIsWatchDir(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("path is %s, targetDir is %s", tc.path, tc.targetDir), func(tt *testing.T) {
-			w := &watcher{
-				path: normalizePath(tc.path),
+			w, err := NewWatcher(tc.path, []string{}, nil, nil)
+			if err != nil {
+				tt.Fatal(err)
 			}
 
 			actual, err := w.isWatchDir(tc.targetDir)
@@ -113,8 +114,9 @@ func TestGetWatchDirs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(tt *testing.T) {
-			w := &watcher{
-				path: tc.path,
+			w, err := NewWatcher(tc.path, []string{}, nil, nil)
+			if err != nil {
+				tt.Fatal(err)
 			}
 
 			actual, err := w.getWatchDirs()
