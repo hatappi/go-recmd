@@ -93,6 +93,9 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 
 func (e *executor) runCommand(ctx context.Context, commands []string) error {
 	cmd := exec.CommandContext(ctx, commands[0], commands[1:]...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 
 	outReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -122,6 +125,8 @@ func (e *executor) runCommand(ctx context.Context, commands []string) error {
 	}()
 
 	err = cmd.Wait()
+	// kill child's process
+	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	if err != nil {
 		return err
 	}
