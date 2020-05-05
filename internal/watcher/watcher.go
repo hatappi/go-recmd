@@ -14,7 +14,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	e "github.com/hatappi/go-recmd/internal/event"
-	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
 )
 
 var defaultExcludePaths = []string{
@@ -30,20 +29,20 @@ type watcher struct {
 	path         string
 	excludePaths []string
 	eventChan    chan *e.Event
+	logger       *zap.Logger
 }
 
 // NewWatcher initilize watcher
-func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event) Watcher {
+func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event, logger *zap.Logger) Watcher {
 	return &watcher{
 		path:         filepath.Clean(path),
 		excludePaths: append(defaultExcludePaths, excludePaths...),
 		eventChan:    eventChan,
+		logger:       logger,
 	}
 }
 
 func (w *watcher) Run(ctx context.Context) error {
-	logger := zapLogger.FromContext(ctx)
-
 	watchDir, err := w.getWatchDirs()
 	if err != nil {
 		return err
@@ -72,7 +71,7 @@ func (w *watcher) Run(ctx context.Context) error {
 		for {
 			select {
 			case event, ok := <-watcher.Events:
-				logger.Debug("occur event", zap.Any("event", event), zap.Bool("ok", ok))
+				w.logger.Debug("occur event", zap.Any("event", event), zap.Bool("ok", ok))
 				if !ok {
 					continue
 				}
@@ -91,13 +90,13 @@ func (w *watcher) Run(ctx context.Context) error {
 						go func(newDir string) {
 							var isWatchDir bool
 							if isWatchDir, err = w.isWatchDir(newDir); err != nil {
-								logger.Error("directory watch is failed", zap.String("path", newDir), zap.Error(err))
+								w.logger.Error("directory watch is failed", zap.String("path", newDir), zap.Error(err))
 								return
 							}
 							if isWatchDir {
-								logger.Debug("watch add new directory", zap.String("path", newDir))
+								w.logger.Debug("watch add new directory", zap.String("path", newDir))
 								if err = watcher.Add(newDir); err != nil {
-									logger.Error("directory add is failed", zap.String("path", newDir), zap.Error(err))
+									w.logger.Error("directory add is failed", zap.String("path", newDir), zap.Error(err))
 									return
 								}
 							}
@@ -116,16 +115,16 @@ func (w *watcher) Run(ctx context.Context) error {
 				if !ok {
 					continue
 				}
-				logger.Error("watch is failed", zap.Error(watchErr))
+				w.logger.Error("watch is failed", zap.Error(watchErr))
 			case <-ctx.Done():
-				logger.Debug("finish watcher")
+				w.logger.Debug("finish watcher")
 				return nil
 			}
 		}
 	})
 
 	for _, wd := range watchDir {
-		logger.Debug("watch directory", zap.String("path", wd))
+		w.logger.Debug("watch directory", zap.String("path", wd))
 		err = watcher.Add(wd)
 		if err != nil {
 			return err
