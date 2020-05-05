@@ -17,7 +17,7 @@ import (
 )
 
 var defaultExcludePaths = []string{
-	".git/**/*",
+	".git",
 }
 
 // Watcher represent watcher interface
