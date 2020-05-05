@@ -25,10 +25,10 @@ func FromContext(ctx context.Context) *zap.Logger {
 }
 
 // NewZap initialize zap logger
-func NewZap(level zapcore.Level) (*zap.Logger, error) {
+func NewZap(level zap.AtomicLevel) (*zap.Logger, error) {
 	logConfig := zap.Config{
 		OutputPaths: []string{"stdout"},
-		Level:       zap.NewAtomicLevelAt(level),
+		Level:       level,
 		Encoding:    "console",
 		EncoderConfig: zapcore.EncoderConfig{
 			LevelKey:    "level",

@@ -13,11 +13,23 @@ import (
 	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
 )
 
+var (
+	verbose  bool
+	logLevel = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:          "recmd",
 	Short:        "recmd is live reloading tools for any application",
 	SilenceUsage: true,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if verbose {
+			logLevel.SetLevel(zapcore.DebugLevel)
+		}
+
+		return nil
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -25,7 +37,7 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	ctx := context.Background()
 
-	logger, err := zapLogger.NewZap(zapcore.DebugLevel)
+	logger, err := zapLogger.NewZap(logLevel)
 	if err != nil {
 		fmt.Printf("logger initialize error: %v", err)
 		os.Exit(1)
@@ -39,4 +51,6 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(newWatchCmd())
+
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "enable verbose")
 }
