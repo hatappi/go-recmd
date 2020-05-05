@@ -22,15 +22,17 @@ type Watcher interface {
 }
 
 type watcher struct {
-	path      string
-	eventChan chan *e.Event
+	path         string
+	excludePaths []string
+	eventChan    chan *e.Event
 }
 
 // NewWatcher initilize watcher
-func NewWatcher(path string, eventChan chan *e.Event) Watcher {
+func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event) Watcher {
 	return &watcher{
-		path:      filepath.Clean(path),
-		eventChan: eventChan,
+		path:         filepath.Clean(path),
+		excludePaths: excludePaths,
+		eventChan:    eventChan,
 	}
 }
 
@@ -169,8 +171,29 @@ func (w *watcher) isWatchDir(targetDir string) (bool, error) {
 	if strings.HasPrefix(targetDir, ".git") {
 		return false, nil
 	}
+	targetDir = strings.TrimRight(targetDir, "/")
+	targetDir += "/"
 
-	dir, _ := filepath.Split(w.path)
+	for _, p := range w.excludePaths {
+		ep, err := convertRegexp(p)
+		if err != nil {
+			return false, err
+		}
+		if ep.MatchString(targetDir) {
+			return false, nil
+		}
+	}
+
+	r, err := convertRegexp(w.path)
+	if err != nil {
+		return false, err
+	}
+
+	return r.MatchString(targetDir), nil
+}
+
+func convertRegexp(path string) (*regexp.Regexp, error) {
+	dir, _ := filepath.Split(path)
 	dir = strings.TrimRight(dir, "/")
 
 	splitDir := strings.Split(dir, "/")
@@ -193,10 +216,8 @@ func (w *watcher) isWatchDir(targetDir string) (bool, error) {
 	pattern = "^" + pattern + "$"
 	r, err := regexp.Compile(pattern)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	targetDir = strings.TrimRight(targetDir, "/")
-	targetDir += "/"
-	return r.MatchString(targetDir), nil
+	return r, nil
 }
