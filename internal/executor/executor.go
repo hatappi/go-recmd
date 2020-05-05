@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -74,6 +75,13 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 		case err := <-errChan:
 			if err == context.Canceled || err == context.DeadlineExceeded {
 				continue
+			}
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				if sysErr, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+					if sysErr.Signal() == syscall.SIGKILL {
+						continue
+					}
+				}
 			}
 			return err
 		case <-ctx.Done():
