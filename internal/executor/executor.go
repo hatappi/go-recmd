@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -47,12 +48,22 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 		}
 	}()
 
+	lastExecutedAt := time.Now()
+
 	for {
 		select {
-		case <-e.eventChan:
-			e.logger.Debug("receive event", zap.Any("event", e))
+		case evt := <-e.eventChan:
+			e.logger.Debug("receive event", zap.Any("event", evt))
+
+			d := evt.CreatedAt.Sub(lastExecutedAt)
+			// If it runs continuously for a short period of time, it will get an killed error.
+			if d.Seconds() < 1.0 {
+				continue
+			}
+
 			cancel()
 
+			lastExecutedAt = evt.CreatedAt
 			go func() {
 				execCtx, cancel = context.WithCancel(ctx)
 				err := e.runCommand(execCtx, commands)

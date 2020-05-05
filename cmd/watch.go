@@ -52,7 +52,7 @@ func newWatchCmd() *cobra.Command {
 
 			eventChan := make(chan *event.Event)
 
-			w := watcher.NewWatcher(opts.path, opts.excludes, eventChan)
+			w := watcher.NewWatcher(opts.path, opts.excludes, eventChan, logger)
 
 			eg := errgroup.Group{}
 			eg.Go(func() error {
