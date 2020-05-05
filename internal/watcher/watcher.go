@@ -109,6 +109,9 @@ func (w *watcher) Run(ctx context.Context) error {
 					continue
 				}
 				logger.Error("watch is failed", zap.Error(watchErr))
+			case <-ctx.Done():
+				logger.Debug("finish watcher")
+				return nil
 			}
 		}
 	})
