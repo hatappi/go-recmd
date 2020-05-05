@@ -11,11 +11,11 @@ dependencies:
 
 .PHONY: run
 run:
-	@${GO} run main.go ${ARG}
+	@${GO} run cmd/recmd/*.go ${ARG}
 
 .PHONY: build
 build:
-	@${GO} build -o dist/recmd main.go
+	@${GO} build -o dist/recmd cmd/recmd/*.go
 
 .PHONY: install-tools
 install-tools:

@@ -1,5 +1,4 @@
-// Package cmd is recmd command
-package cmd
+package main
 
 import (
 	"context"
