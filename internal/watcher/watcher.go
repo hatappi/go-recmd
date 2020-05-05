@@ -17,6 +17,10 @@ import (
 	zapLogger "github.com/hatappi/go-recmd/internal/logger/zap"
 )
 
+var defaultExcludePaths = []string{
+	".git/**/*",
+}
+
 // Watcher represent watcher interface
 type Watcher interface {
 	Run(ctx context.Context) error
@@ -32,7 +36,7 @@ type watcher struct {
 func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event) Watcher {
 	return &watcher{
 		path:         filepath.Clean(path),
-		excludePaths: excludePaths,
+		excludePaths: append(defaultExcludePaths, excludePaths...),
 		eventChan:    eventChan,
 	}
 }
@@ -170,9 +174,6 @@ func (w *watcher) getWatchDirs() ([]string, error) {
 }
 
 func (w *watcher) isWatchDir(targetDir string) (bool, error) {
-	if strings.HasPrefix(targetDir, ".git") {
-		return false, nil
-	}
 	targetDir = strings.TrimRight(targetDir, "/")
 	targetDir += "/"
 
