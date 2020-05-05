@@ -71,7 +71,7 @@ func (w *watcher) Run(ctx context.Context) error {
 		for {
 			select {
 			case event, ok := <-watcher.Events:
-				w.logger.Debug("occur event", zap.Any("event", event), zap.Bool("ok", ok))
+				w.logger.Debug("occur event", zap.Reflect("event", event), zap.Bool("ok", ok))
 				if !ok {
 					continue
 				}
@@ -90,13 +90,13 @@ func (w *watcher) Run(ctx context.Context) error {
 						go func(newDir string) {
 							var isWatchDir bool
 							if isWatchDir, err = w.isWatchDir(newDir); err != nil {
-								w.logger.Error("directory watch is failed", zap.String("path", newDir), zap.Error(err))
+								w.logger.Warn("failed to judge the watch target", zap.String("path", newDir), zap.Error(err))
 								return
 							}
 							if isWatchDir {
-								w.logger.Debug("watch add new directory", zap.String("path", newDir))
+								w.logger.Debug("add new directory to watch target", zap.String("path", newDir))
 								if err = watcher.Add(newDir); err != nil {
-									w.logger.Error("directory add is failed", zap.String("path", newDir), zap.Error(err))
+									w.logger.Warn("failed to watch new directory", zap.String("path", newDir), zap.Error(err))
 									return
 								}
 							}
@@ -115,7 +115,7 @@ func (w *watcher) Run(ctx context.Context) error {
 				if !ok {
 					continue
 				}
-				w.logger.Error("watch is failed", zap.Error(watchErr))
+				w.logger.Warn("failed to watch", zap.Error(watchErr))
 			case <-ctx.Done():
 				w.logger.Debug("finish watcher")
 				return nil
@@ -124,7 +124,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	})
 
 	for _, wd := range watchDir {
-		w.logger.Debug("watch directory", zap.String("path", wd))
+		w.logger.Debug("add directory to watch target", zap.String("path", wd))
 		err = watcher.Add(wd)
 		if err != nil {
 			return err
