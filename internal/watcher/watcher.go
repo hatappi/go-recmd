@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"go.uber.org/zap"
@@ -103,7 +104,8 @@ func (w *watcher) Run(ctx context.Context) error {
 				_, f := filepath.Split(event.Name)
 				if fileMatchPattern.MatchString(f) {
 					w.eventChan <- &e.Event{
-						Path: event.Name,
+						Path:      event.Name,
+						CreatedAt: time.Now(),
 					}
 				}
 			case watchErr, ok := <-watcher.Errors:
