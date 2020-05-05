@@ -274,3 +274,6 @@ issues:
         - errcheck
         - gosec
         - scopelint
+    - path: internal/executor/executor.go
+      linters:
+        - gosec
