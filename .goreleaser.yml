@@ -2,7 +2,7 @@ before:
   hooks:
     - go generate ./...
 builds:
-- main: ./cmd/recmd/main.go
+- main: ./cmd/recmd/
   env:
     - CGO_ENABLED=0
   ldflags:
