@@ -131,3 +131,77 @@ func TestGetWatchDirs(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertRegexp(t *testing.T) {
+	os.MkdirAll("tmp/test/a/b/c/d", 0755)
+	defer os.RemoveAll("tmp")
+
+	testCases := []struct {
+		path    string
+		expect  string
+		wantErr bool
+	}{
+		{
+			path:    "tmp/**/*",
+			expect:  "^tmp/([^/]*/)*$",
+			wantErr: false,
+		},
+		{
+			path:    "tmp/",
+			expect:  "^tmp/([^/]*/)*([^/]*/)?$",
+			wantErr: false,
+		},
+		{
+			path:    "tmp/test",
+			expect:  "^tmp/test/$",
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		actual, err := convertRegexp(tc.path)
+
+		if (err == nil) == tc.wantErr {
+			t.Fatalf("err unexpected, %+v", err)
+		}
+
+		if tc.expect != actual.String() {
+			t.Fatalf("unexpected regepx expect: %s, actual: %s", tc.expect, actual.String())
+		}
+	}
+}
+
+func TestNormalizePath(t *testing.T) {
+	os.MkdirAll("tmp/test/a/b/c/d", 0755)
+	defer os.RemoveAll("tmp")
+
+	testCases := []struct {
+		path   string
+		expect string
+	}{
+		{
+			path:   "tmp/test/",
+			expect: "tmp/test/",
+		},
+		{
+			path:   "tmp/test",
+			expect: "tmp/test/",
+		},
+		{
+			path:   "tmp/test/**/*",
+			expect: "tmp/test/**/*",
+		},
+		{
+			path:   "./tmp",
+			expect: "tmp/",
+		},
+	}
+
+	for _, tc := range testCases {
+		actual := normalizePath(tc.path)
+
+		if tc.expect != actual {
+			t.Fatalf("unexpected path. expect: %s, actual: %s", tc.expect, actual)
+		}
+	}
+}
