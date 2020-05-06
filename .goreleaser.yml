@@ -3,6 +3,7 @@ before:
     - go generate ./...
 builds:
 - main: ./cmd/recmd/
+  binary: recmd
   env:
     - CGO_ENABLED=0
   ldflags:
