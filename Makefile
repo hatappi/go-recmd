@@ -1,6 +1,8 @@
 GO := go
 ARG = ""
 
+GIT_HASH=$(shell git rev-parse --short HEAD)
+
 GOBIN:=${PWD}/bin
 PATH:=${GOBIN}:${PATH}
 
@@ -11,11 +13,16 @@ dependencies:
 
 .PHONY: run
 run:
-	@${GO} run cmd/recmd/*.go ${ARG}
+	@${GO} run \
+	  -ldflags "-X main.commit=${GIT_HASH}" \
+	  cmd/recmd/*.go \
+	  ${ARG}
 
 .PHONY: build
 build:
-	@${GO} build -o dist/recmd cmd/recmd/*.go
+	@${GO} build \
+	  -ldflags "-X main.commit=${GIT_HASH}" \
+	  -o dist/recmd cmd/recmd/*.go
 
 .PHONY: install-tools
 install-tools:
