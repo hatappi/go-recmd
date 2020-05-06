@@ -48,19 +48,24 @@ func newWatchCmd() *cobra.Command {
 				zap.Strings("commands", args),
 			)
 
-			ctx, cancel := context.WithCancel(ctx)
-
 			eventChan := make(chan *event.Event)
 
 			eg := errgroup.Group{}
 
-			w := watcher.NewWatcher(opts.path, opts.excludes, eventChan, logger)
+			w, err := watcher.NewWatcher(opts.path, opts.excludes, eventChan, logger)
+			if err != nil {
+				return err
+			}
+
+			executor := executor.NewExecutor(logger, eventChan)
+
+			ctx, cancel := context.WithCancel(ctx)
+
 			eg.Go(func() error {
 				defer cancel()
 				return w.Run(ctx)
 			})
 
-			executor := executor.NewExecutor(logger, eventChan)
 			eg.Go(func() error {
 				defer cancel()
 				return executor.Run(ctx, args)

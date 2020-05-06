@@ -17,29 +17,54 @@ import (
 )
 
 var defaultExcludePaths = []string{
-	".git/**/*",
+	".git",
 }
 
 // Watcher represent watcher interface
 type Watcher interface {
 	Run(ctx context.Context) error
+
+	isWatchDir(targetDir string) (bool, error)
+	getWatchDirs() ([]string, error)
 }
 
 type watcher struct {
-	path         string
-	excludePaths []string
-	eventChan    chan *e.Event
-	logger       *zap.Logger
+	path            string
+	pathPattern     *regexp.Regexp
+	excludePaths    []string
+	excludePatterns []*regexp.Regexp
+	eventChan       chan *e.Event
+	logger          *zap.Logger
 }
 
 // NewWatcher initilize watcher
-func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event, logger *zap.Logger) Watcher {
-	return &watcher{
-		path:         filepath.Clean(path),
-		excludePaths: append(defaultExcludePaths, excludePaths...),
-		eventChan:    eventChan,
-		logger:       logger,
+func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event, logger *zap.Logger) (Watcher, error) {
+	neps := []string{}
+	eps := []*regexp.Regexp{}
+	for _, p := range append(defaultExcludePaths, excludePaths...) {
+		n := normalizePath(p)
+		neps = append(neps, n)
+		ep, err := convertRegexp(n)
+		if err != nil {
+			return nil, err
+		}
+		eps = append(eps, ep)
 	}
+
+	np := normalizePath(path)
+	pp, err := convertRegexp(np)
+	if err != nil {
+		return nil, err
+	}
+
+	return &watcher{
+		path:            np,
+		pathPattern:     pp,
+		excludePaths:    neps,
+		excludePatterns: eps,
+		eventChan:       eventChan,
+		logger:          logger,
+	}, nil
 }
 
 func (w *watcher) Run(ctx context.Context) error {
@@ -76,8 +101,10 @@ func (w *watcher) Run(ctx context.Context) error {
 					continue
 				}
 
+				newPath := normalizePath(event.Name)
+
 				if event.Op != fsnotify.Remove {
-					fileInfo, osErr := os.Stat(event.Name)
+					fileInfo, osErr := os.Stat(newPath)
 					if osErr != nil {
 						// If temporary file is checked, it may not be visible.
 						if _, ok := osErr.(*os.PathError); ok {
@@ -100,14 +127,14 @@ func (w *watcher) Run(ctx context.Context) error {
 									return
 								}
 							}
-						}(event.Name)
+						}(newPath)
 					}
 				}
 
-				_, f := filepath.Split(event.Name)
+				_, f := filepath.Split(newPath)
 				if fileMatchPattern.MatchString(f) {
 					w.eventChan <- &e.Event{
-						Path:      event.Name,
+						Path:      newPath,
 						CreatedAt: time.Now(),
 					}
 				}
@@ -141,12 +168,16 @@ func (w *watcher) Run(ctx context.Context) error {
 func (w *watcher) getWatchDirs() ([]string, error) {
 	watchDirs := []string{}
 
-	rootPath := strings.Split(w.path, "/")[0]
+	r, err := regexp.Compile("^(/?[^/]+)")
+	if err != nil {
+		return nil, err
+	}
+	rootPath := r.FindString(w.path)
 	if strings.Contains(rootPath, "*") {
 		rootPath = "."
 	}
 
-	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -173,37 +204,48 @@ func (w *watcher) getWatchDirs() ([]string, error) {
 }
 
 func (w *watcher) isWatchDir(targetDir string) (bool, error) {
-	targetDir = strings.TrimRight(targetDir, "/")
-	targetDir += "/"
+	targetDir = normalizePath(targetDir)
 
-	for _, p := range w.excludePaths {
-		ep, err := convertRegexp(p)
-		if err != nil {
-			return false, err
-		}
-		if ep.MatchString(targetDir) {
+	for _, r := range w.excludePatterns {
+		if r.MatchString(targetDir) {
 			return false, nil
 		}
 	}
 
-	r, err := convertRegexp(w.path)
-	if err != nil {
-		return false, err
-	}
-
-	return r.MatchString(targetDir), nil
+	return w.pathPattern.MatchString(targetDir), nil
 }
 
 func convertRegexp(path string) (*regexp.Regexp, error) {
+	path = normalizePath(path)
 	dir, _ := filepath.Split(path)
+
 	dir = strings.TrimRight(dir, "/")
 
-	splitDir := strings.Split(dir, "/")
-	patterns := []string{}
+	// syntax sugar
+	r, err := regexp.Compile("^/?[^/]+$")
+	if err != nil {
+		return nil, err
+	}
+	if r.MatchString(dir) {
+		dir += "/**/*"
+	}
 
+	splitDir := strings.Split(dir, "/")
+
+	patterns := []string{}
 	for _, d := range splitDir {
+		// ignore current directory
+		if d == "." {
+			continue
+		}
+
 		if d == "**" {
 			patterns = append(patterns, "([^/]*/)*")
+			continue
+		}
+
+		if d == "*" {
+			patterns = append(patterns, "([^/]*/)?")
 			continue
 		}
 
@@ -216,10 +258,27 @@ func convertRegexp(path string) (*regexp.Regexp, error) {
 
 	pattern := strings.Join(patterns, "")
 	pattern = "^" + pattern + "$"
-	r, err := regexp.Compile(pattern)
+	r, err = regexp.Compile(pattern)
 	if err != nil {
 		return nil, err
 	}
 
 	return r, nil
+}
+
+func normalizePath(path string) string {
+	// if path is glob pattern, it doesn't normalize
+	if strings.Contains(path, "*") {
+		return path
+	}
+
+	path = filepath.Clean(path)
+
+	fi, err := os.Stat(path)
+	if err == nil && fi.IsDir() {
+		path = strings.TrimRight(path, "/")
+		path += "/"
+	}
+
+	return path
 }
