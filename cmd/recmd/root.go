@@ -54,6 +54,7 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(newWatchCmd())
+	rootCmd.AddCommand(newVersionCmd())
 
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "enable verbose")
 }
