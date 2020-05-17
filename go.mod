@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/fsnotify/fsnotify v1.4.7
-	github.com/golangci/golangci-lint v1.26.0
+	github.com/golangci/golangci-lint v1.27.0
 	github.com/google/go-cmp v0.2.0
 	github.com/spf13/cobra v1.0.0
 	go.uber.org/zap v1.10.0
