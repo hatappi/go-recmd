@@ -20,11 +20,11 @@ type Executor interface {
 }
 type executor struct {
 	logger    *zap.Logger
-	eventChan chan *event.Event
+	eventChan <-chan *event.Event
 }
 
 // NewExecutor initialize executor
-func NewExecutor(logger *zap.Logger, eventChan chan *event.Event) Executor {
+func NewExecutor(logger *zap.Logger, eventChan <-chan *event.Event) Executor {
 	return &executor{
 		logger:    logger,
 		eventChan: eventChan,
@@ -44,8 +44,9 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 
 	go func() {
 		err := e.runCommand(execCtx, commands)
-		if err != nil {
+		if !isIgnoreError(err) {
 			errChan <- err
+			close(errChan)
 		}
 	}()
 
@@ -69,22 +70,16 @@ func (e *executor) Run(ctx context.Context, commands []string) error {
 				e.logger.Info("re-execute the command")
 				execCtx, cancel = context.WithCancel(ctx)
 				err := e.runCommand(execCtx, commands)
-				if err != nil {
+				if !isIgnoreError(err) {
 					errChan <- err
 				}
 			}()
-		case err := <-errChan:
-			if err == context.Canceled || err == context.DeadlineExceeded {
-				continue
+		case err, ok := <-errChan:
+			if !ok {
+				return err
 			}
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				if sysErr, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-					if sysErr.Signal() == syscall.SIGKILL {
-						continue
-					}
-				}
-			}
-			return err
+
+			e.logger.Error("re-execute error", zap.Error(err))
 		case <-ctx.Done():
 			e.logger.Debug("finish executor")
 			return nil
@@ -128,9 +123,25 @@ func (e *executor) runCommand(ctx context.Context, commands []string) error {
 	err = cmd.Wait()
 	// kill child's process
 	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func isIgnoreError(err error) bool {
+	if err == nil {
+		return true
+	}
+
+	if err == context.Canceled || err == context.DeadlineExceeded {
+		return true
+	}
+
+	return false
 }

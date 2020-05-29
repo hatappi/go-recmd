@@ -33,12 +33,12 @@ type watcher struct {
 	pathPattern     *regexp.Regexp
 	excludePaths    []string
 	excludePatterns []*regexp.Regexp
-	eventChan       chan *e.Event
+	eventChan       chan<- *e.Event
 	logger          *zap.Logger
 }
 
 // NewWatcher initilize watcher
-func NewWatcher(path string, excludePaths []string, eventChan chan *e.Event, logger *zap.Logger) (Watcher, error) {
+func NewWatcher(path string, excludePaths []string, eventChan chan<- *e.Event, logger *zap.Logger) (Watcher, error) {
 	neps := []string{}
 	eps := []*regexp.Regexp{}
 	for _, p := range append(defaultExcludePaths, excludePaths...) {
