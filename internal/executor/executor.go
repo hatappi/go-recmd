@@ -20,11 +20,11 @@ type Executor interface {
 }
 type executor struct {
 	logger    *zap.Logger
-	eventChan chan *event.Event
+	eventChan <-chan *event.Event
 }
 
 // NewExecutor initialize executor
-func NewExecutor(logger *zap.Logger, eventChan chan *event.Event) Executor {
+func NewExecutor(logger *zap.Logger, eventChan <-chan *event.Event) Executor {
 	return &executor{
 		logger:    logger,
 		eventChan: eventChan,
