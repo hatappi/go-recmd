@@ -8,8 +8,8 @@ PATH:=${GOBIN}:${PATH}
 
 .PHONY: dependencies
 dependencies:
-	go mod download
-	go mod tidy
+	@${GO} mod download
+	@${GO} mod tidy
 
 .PHONY: run
 run:
